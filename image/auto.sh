@@ -26,7 +26,6 @@ esac
 IP4=$(curl -4 -s icanhazip.com)
 getwey=$(ip route | awk '/default/ { print $3 }')
 
-
 cat >/tmp/net.bat<<EOF
 @ECHO OFF
 cd.>%windir%\GetAdmin
@@ -36,23 +35,29 @@ echo CreateObject^("Shell.Application"^).ShellExecute "%~s0", "%*", "", "runas",
 del /f /q "%temp%\Admin.vbs"
 exit /b 2)
 
-
+REM Mengatur alamat IP statis
 netsh -c interface ip set address name="$ethernt" source=static address=$IP4 mask=255.255.240.0 gateway=$getwey
 netsh -c interface ip add dnsservers name="$ethernt" address=1.1.1.1 index=1 validate=no
 netsh -c interface ip add dnsservers name="$ethernt" address=8.8.4.4 index=2 validate=no
 
+REM Mengaktifkan Remote Desktop
+reg add "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server" /v "fDenyTSConnections" /t REG_DWORD /d 0 /f
+
+REM Menambahkan aturan firewall untuk membuka port 9999
+netsh advfirewall firewall add rule name="Open RDP Port 9999" dir=in action=allow protocol=TCP localport=9999
+
+REM Mengizinkan koneksi RDP melalui firewall
+netsh advfirewall set allprofiles state on
 
 ECHO SELECT VOLUME=%%SystemDrive%% > "%SystemDrive%\diskpart.extend"
 ECHO EXTEND >> "%SystemDrive%\diskpart.extend"
 START /WAIT DISKPART /S "%SystemDrive%\diskpart.extend"
-
 
 cd /d "%ProgramData%/Microsoft/Windows/Start Menu/Programs/Startup"
 
 del "%~f0"
 exit
 EOF
-
 
 wget --no-check-certificate -O- $selectos | gunzip | dd of=/dev/vda bs=3M status=progress
 
